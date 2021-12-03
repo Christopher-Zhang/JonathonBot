@@ -11,9 +11,22 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 SANTA_FILE_NAME = os.getenv('SANTA_FILE_NAME')
 SANTA_ICON_URL = "https://i.imgur.com/ZMsF3Yt.png"
+HELP_ICON_URL = "https://clipart.world/wp-content/uploads/2020/06/Question-Mark-clipart-transparent.png"
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix="j!")
+
+# Globals
+help_alert = discord.Embed(
+    title = "Here are some commands to help you get started!",
+    description = ("You can just DM me the following commands, no prefix needed!\n\n\n" +
+        "**info**\n- Use this command to see the relevant info about your Secret Santa gift exchanges!\n\n"
+        "**message [insert cheery words here]**\n- Give your Secret Santa a message, respond to their questions!\n\n" +
+        '**request [address, wishlist, christmas]**\n- Use this command to anonymously request information from your Secret Santee™, type "request" to see more details')
+)
+help_alert.set_thumbnail(url=HELP_ICON_URL)
+no_exchange_response = "You are not a part of any Secret Santa gift exchanges!"
+
 
 @bot.event
 async def on_ready():
@@ -44,7 +57,7 @@ async def on_message(message):
                             embed = discord.Embed(
                                 title = "Secret Santa for " + santa_data["server_name"],
                                 description = (
-                                    "Budget: " + str(santa_data["budget"]) + "\n" + "Your Secret Santee™ : **" + santa_data["id_to_name"][str(santee)] + "**" if santa_data["matched"] 
+                                    "Budget: **$" + str(santa_data["budget"]) + "**\n\n" + "Your Secret Santee™ : **" + santa_data["id_to_name"][str(santee)] + "**" if santa_data["matched"] 
                                         else "Budget: $" + str(santa_data["budget"])
                                 )
                             )
@@ -52,17 +65,17 @@ async def on_message(message):
                             message = await author.send(embed=embed)
                             # await bot.add_reaction(message, )
                 if not exists:
-                    await author.send("You are not a part of any Secret Santas")
+                    await author.send(no_exchange_response)
             elif content.startswith('request'):
                 args = content[8:]
                 valid = True
                 message = ''
                 if args.lower() == "address":
-                    message = "Your Secret Santa is requesting your shipping address.\n\nDoxx yourself: message [message contents]"
+                    message = "Your Secret Santa is requesting your shipping address.\n\nRespond using this command: message [your shipping address]"
                 elif args.lower() == "wishlist":
-                    message = "Your Secret Santa needs help choosing a gift smh...\n\nHelp them out: message [message contents]"
+                    message = "Your Secret Santa needs help choosing a gift smh...\n\nHelp them out with this command: message [some gift idea help]"
                 elif args.lower() == "christmas":
-                    message = "Your Secret Santa wishes you a Merry Christmas!\n\nReturn the favor: message [message contents]"
+                    message = "Your Secret Santa wishes you a Merry Christmas!\n\nReturn the favor with this command: message [some (hopefully) cheery words]"
                 else:
                     valid = False
                 if valid:
@@ -88,7 +101,7 @@ async def on_message(message):
                                     pass
                                 response = "Successfully sent message!" if success else "Failed to send message..."
                     if not exists:
-                        response = "You are not a part of any Secret Santas..."
+                        response = no_exchange_response
                         
                 else:
                     response = ("To protect the sanctity of this blessed holiday ritual, you may choose from these options three:\n" + 
@@ -123,7 +136,7 @@ async def on_message(message):
                             except:
                                 pass
                 if not exists:
-                    response = "You are not a part of any Secret Santas..."
+                    response = no_exchange_response
                 else:
                     if success:
                         response = "Message successfully sent!"
@@ -131,13 +144,7 @@ async def on_message(message):
                         response = "Failed to send message..."
                 await author.send(response)
             else:
-                embed = discord.Embed(
-                    title = "Here is a List of the Valid Commands!",
-                    description = ("No prefix needed in DMs\n\nmessage [message contents] - you can message your Secret Santa\n" +
-                        "request - you can request information from your Secret Santee™\ninfo - check your Secret Santee™ and the budget")
-                )
-                embed.set_thumbnail(url=SANTA_ICON_URL)
-                await author.send(embed=embed)
+                await author.send(embed=help_alert)
         except discord.errors.Forbidden:
             pass
     else:
@@ -186,16 +193,23 @@ async def santa(ctx, *args):
             }
             response = "Successfully created a Secret Santa for **" + ctx.guild.name + "**"
         else:
-            response = "You are too weak to create a secret santa"
+            response = "You are too weak to create a Secret Santa"
     
     elif args[0] == "start":
         # permissions_ = user_.guild_permissions
         # if permissions_.administrator:
         if id_ == 140967651701817345:
-            response = "Started"
+            start_alert = discord.Embed(
+                title = (":christmas_tree::christmas_tree: MATCHUPS HAVE BEEN DRAWN! :christmas_tree::christmas_tree:"),
+                description = "Please check your DMs to see your Secret Santee™!"
+            )
+            start_alert.set_thumbnail(url=SANTA_ICON_URL)
+            # response = ":christmas_tree::confetti_ball: SECRET SANTA GIFT EXCHANGE MATCHUPS HAVE BEEN DRAWN, PLEASE CHECK YOUR DMs TO FIND OUT YOUR SECRET SANTEE! :confetti_ball::christmas_tree:"
             santa_data = await create_matchups(ctx, santa_data)
+            write_to_file(santa_data, SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
+            await ctx.channel.send(embed=start_alert)
         else:
-            response = "You are too weak to start this secret santa"
+            response = "You are too weak to start this Secret Santa"
 
     elif args[0] == "set_budget":
         if not santa_data:
@@ -208,15 +222,22 @@ async def santa(ctx, *args):
             if id_ == 140967651701817345:
                 val = int(args[1])
                 santa_data["budget"] = val
-                response = "Successfully set the budget to **" + val
+                response = "Successfully set the budget to **$" + str(val) + "**"
             else:
                 response = "You are too weak to edit this Secret Santa"
-            
-            
-
-        
+    elif args[0] == "leave":
+        if not santa_data:
+            response = not_created_message
+        else:
+            if id_ not in santa_data["participants"]:
+                response = no_exchange_response
+            elif santa_data["matched"]:
+                response = "Its too late! Matchups have already been drawn!"
+            else:
+                santa_data["participants"].remove(id_)
+                response = "You have been successfully removed from this server's Secret Santa gift exchange!"
     await ctx.channel.send(response)
-    print(santa_data)
+    # print(santa_data)
     write_to_file(santa_data, SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
     return
     
@@ -239,8 +260,8 @@ async def create_matchups(ctx, santa_data):
     random.shuffle(random_list1)
     random_list2 = random_list1.copy()
     n = random.randint(1,length-1)
-    while n == length/2 and length != 2:
-        n = random.randint(0, length)
+    # while n == length/2 and length != 2:
+    #     n = random.randint(0, length)
         
     random_list2 = rotate_list(random_list2, n)
     matchups = {}
@@ -266,8 +287,15 @@ async def create_matchups(ctx, santa_data):
     for i in range(length):
         member = members[i]
         recipient_id = matchups[member.id]
-        message = "**" + member.name + "**, you are the Secret Santa for **" + id2name[recipient_id] + "**. Be good to them!"
-        await member.send(message)
+        # message = "**" + member.name + "**, you are the Secret Santa for **" + id2name[recipient_id] + "**. Be good to them!"
+        pairing_alert = discord.Embed(
+            title = "**" + member.name + "**! Your Secret Santa pairing has been picked!",
+            description = ("Your Secret Santee™ is **" + id2name[recipient_id] + "**!\n\n" +
+                "Make sure to give them a great present!\n\nThis Secret Santa gift exchange's budget is currently set to **$" + str(santa_data["budget"]) + "**"),
+        )
+        pairing_alert.set_thumbnail(url=SANTA_ICON_URL)
+        await member.send(embed=pairing_alert)
+        await member.send(embed=help_alert)
     return santa_data
 async def alert_players(message, members):
     for member in members:
