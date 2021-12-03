@@ -169,10 +169,10 @@ async def santa(ctx, *args):
     elif args[0] == "join":
         if santa_data:
             if id_ in santa_data["participants"]:
-                response = "You are already registered for the Secret Santa **" + name_ +  "**"
+                response = "You are already registered for the Secret Santa gift exchange **" + name_ +  "**!"
             else:
                 santa_data["participants"].append(id_)
-                response = "Welcome to the **" + ctx.guild.name + "** Secret Santa **" + name_ + "**"
+                response = "Welcome to the **" + ctx.guild.name + "** Secret Santa gift exchange **" + name_ + "**!"
         else:
             response = not_created_message 
 
@@ -191,7 +191,7 @@ async def santa(ctx, *args):
                 "budget": 0,
                 "matched": False
             }
-            response = "Successfully created a Secret Santa for **" + ctx.guild.name + "**"
+            response = "Successfully created a Secret Santa gift exchange for **" + ctx.guild.name + "**"
         else:
             response = "You are too weak to create a Secret Santa"
     
@@ -225,6 +225,7 @@ async def santa(ctx, *args):
                 response = "Successfully set the budget to **$" + str(val) + "**"
             else:
                 response = "You are too weak to edit this Secret Santa"
+
     elif args[0] == "leave":
         if not santa_data:
             response = not_created_message
@@ -236,6 +237,20 @@ async def santa(ctx, *args):
             else:
                 santa_data["participants"].remove(id_)
                 response = "You have been successfully removed from this server's Secret Santa gift exchange!"
+
+    elif args[0] == "list":
+        if not santa_data:
+            response = not_created_message
+        else:
+            ids = santa_data["participants"]
+            # random.shuffle(ids)
+            name_dict = santa_data["id_to_name"]
+            response = "Here are a list of the current participants:"
+            for id in ids:
+                name = name_dict[str(id)]
+                response += "\n" + name
+            response += "\n\nThe current budget is: **$" + str(santa_data["budget"]) + "**"
+
     await ctx.channel.send(response)
     # print(santa_data)
     write_to_file(santa_data, SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
