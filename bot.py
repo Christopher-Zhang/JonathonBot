@@ -152,7 +152,7 @@ async def on_message(message):
 
 @bot.command(
     name = "santa",
-    help = "join"
+    help = "join, info, leave"
 )
 async def santa(ctx, *args):
     try:
@@ -173,6 +173,8 @@ async def santa(ctx, *args):
                 response = "You are already registered for the Secret Santa gift exchange **" + name_ +  "**!"
             else:
                 santa_data["participants"].append(id_)
+                santa_data["name_to_id"][name_] = id_
+                santa_data["id_to_name"][id_] = name_
                 response = "Welcome to the **" + ctx.guild.name + "** Secret Santa gift exchange **" + name_ + "**!"
         else:
             response = not_created_message 
@@ -239,21 +241,21 @@ async def santa(ctx, *args):
                 santa_data["participants"].remove(id_)
                 response = "You have been successfully removed from this server's Secret Santa gift exchange!"
 
-    elif args[0] == "list":
+    elif args[0] == "info":
         if not santa_data:
             response = not_created_message
         else:
             ids = santa_data["participants"]
             # random.shuffle(ids)
             name_dict = santa_data["id_to_name"]
-            response = "Here are a list of the current participants:"
+            response = "Here is a list of the current participants:"
             for id in ids:
                 name = name_dict[str(id)]
                 response += "\n" + name
             response += "\n\nThe current budget is: **$" + str(santa_data["budget"]) + "**"
     else:
-        valid = False
-    if valid:
+        valid_ = False
+    if valid_:
         await ctx.channel.send(response)
     # print(santa_data)
     write_to_file(santa_data, SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
@@ -284,8 +286,8 @@ async def create_matchups(ctx, santa_data):
     random_list2 = rotate_list(random_list2, n)
     matchups = {}
     matchups_r = {}
-    name2id = {}
-    id2name = {}
+    # name2id = {}
+    # id2name = {}
     members = []
     for i in range(length):
         id = random_list1[i]
@@ -293,14 +295,14 @@ async def create_matchups(ctx, santa_data):
         matchups_r[random_list2[i]] = id
         member = await ctx.guild.fetch_member(id) 
         name = member.name
-        name2id[name] = id
-        id2name[id] = name
+        # name2id[name] = id
+        # id2name[id] = name
         members.append(member)
     santa_data["matchups"] = matchups
     santa_data["matchups_r"] = matchups_r
     santa_data["matched"] = True
-    santa_data["name_to_id"] = name2id
-    santa_data["id_to_name"] = id2name
+    # santa_data["name_to_id"] = name2id
+    # santa_data["id_to_name"] = id2name
     # alert participants
     for i in range(length):
         member = members[i]
@@ -308,7 +310,7 @@ async def create_matchups(ctx, santa_data):
         # message = "**" + member.name + "**, you are the Secret Santa for **" + id2name[recipient_id] + "**. Be good to them!"
         pairing_alert = discord.Embed(
             title = "**" + member.name + "**! Your Secret Santa pairing has been picked!",
-            description = ("Your Secret Santee™ is **" + id2name[recipient_id] + "**!\n\n" +
+            description = ("Your Secret Santee™ is **" + santa_data["id_to_name"][recipient_id] + "**!\n\n" +
                 "Make sure to give them a great present!\n\nThis Secret Santa gift exchange's budget is currently set to **$" + str(santa_data["budget"]) + "**"),
         )
         pairing_alert.set_thumbnail(url=SANTA_ICON_URL)
