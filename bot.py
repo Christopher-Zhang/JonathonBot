@@ -160,6 +160,7 @@ async def santa(ctx, *args):
     except:
         os.remove(SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
         santa_data = None
+    valid_ = True
     user_ = ctx.author
     name_ = user_.name
     id_ = user_.id
@@ -250,8 +251,10 @@ async def santa(ctx, *args):
                 name = name_dict[str(id)]
                 response += "\n" + name
             response += "\n\nThe current budget is: **$" + str(santa_data["budget"]) + "**"
-
-    await ctx.channel.send(response)
+    else:
+        valid = False
+    if valid:
+        await ctx.channel.send(response)
     # print(santa_data)
     write_to_file(santa_data, SANTA_FILE_NAME + "_" + str(ctx.guild.id) + ".txt")
     return
