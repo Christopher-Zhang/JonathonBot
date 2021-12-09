@@ -297,7 +297,7 @@ async def handle_command_delete(ctx: commands.Context):
     if check_santa_data(ctx.guild.id):
         if id_ == 140967651701817345:
             santa_data = read_santa_data(ctx.guild.id)
-            if "rold_id" in santa_data:
+            if santa_data and "role_id" in santa_data:
                 role = ctx.guild.get_role(santa_data["role_id"])
                 await role.delete(reason = 'Deleting current Secret Santa')
             os.remove(file_name)
