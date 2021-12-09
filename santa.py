@@ -1,6 +1,8 @@
 import discord
 import random
 import os
+
+from discord.ext.commands.core import check
 from util import utils
 from constants import santa_constants as santac
 from discord.ext import commands
@@ -58,11 +60,11 @@ class Santa(
         elif args[0] == "set_budget":
             response = handle_command_set_budget(ctx, args[1:])
         elif args[0] == "leave":
-            response = handle_command_leave(ctx)
+            response = await handle_command_leave(ctx)
         elif args[0] == "info":
             response = handle_command_info(ctx)
         elif args[0] == 'delete':
-            response = handle_command_delete(ctx)
+            response = await handle_command_delete(ctx)
         else:
             send_response = False
         if send_response:
@@ -75,10 +77,10 @@ async def handle_dm_info(message: discord.Message, guilds: list):
     for guild in guilds:
         print(guild.name)
         if await guild.fetch_member(author.id):
-            file_name = santac.SANTA_FILE_NAME + "_" + str(guild.id) + ".txt"
+            file_name = get_file_name(guild.id)
             if os.path.exists(file_name):
                 exists = True
-                santa_data = utils.read_from_file(file_name)
+                santa_data = read_santa_data(guild.id)
                 santee = santa_data["matchups"][str(author.id)]
                 embed = discord.Embed(
                     title = "Secret Santa for " + santa_data["server_name"],
@@ -110,10 +112,10 @@ async def handle_dm_request(message: discord.Message, guilds: list):
         exists = False
         for guild in guilds:
             if await guild.fetch_member(author.id):
-                file_name = santac.SANTA_FILE_NAME + "_" + str(guild.id) + ".txt"
-                if os.path.exists(file_name):
+                file_name = get_file_name(guild.id)
+                if check_santa_data(guild.id):
                     exists = True
-                    santa_data = utils.read_from_file(file_name)
+                    santa_data = read_santa_data(guild.id)
                     embed = discord.Embed(
                         title = "A Message From Your Secret Santa!",
                         description = message,
@@ -152,9 +154,9 @@ async def handle_dm_message(message: discord.Message, guilds: list):
     for guild in guilds:
         print(guild.name)
         if await guild.fetch_member(author.id):
-            file_name = santac.SANTA_FILE_NAME + "_" + str(guild.id) + ".txt"
-            if os.path.exists(file_name):
-                santa_data = utils.read_from_file(file_name)
+            # file_name = get_file_name(guild.id)
+            if check_santa_data(guild.id):
+                santa_data = read_santa_data(guild.id)
                 exists = True
                 try:
                     recipient = await guild.fetch_member(santa_data["matchups"][str(author.id)])
@@ -198,24 +200,29 @@ async def handle_command_create(ctx: commands.Context):
     # permissions_ = user_.guild_permissions
     # if permissions_.administrator:
     id_ = ctx.author.id
+    santa_data = None
     if id_ == 140967651701817345:
-        role = await create_santa_role(ctx.guild)
-        santa_data = {
-            "participants": [],
-            "matchups": {},
-            "matchups_r": {},
-            "server_id": ctx.guild.id,
-            "server_name": ctx.guild.name,
-            "name_to_id": {},
-            "id_to_name": {},
-            "budget": 0,
-            "matched": False,
-            "role_id": role.id
-        }
-        response = "Successfully created a Secret Santa gift exchange for **" + ctx.guild.name + "**"
+        if check_santa_data(ctx.guild.id):
+            response = "There is already a Secret Santa for **" + ctx.guild.name + "**"
+        else:
+            role = await create_santa_role(ctx.guild)
+            santa_data = {
+                "participants": [],
+                "matchups": {},
+                "matchups_r": {},
+                "server_id": ctx.guild.id,
+                "server_name": ctx.guild.name,
+                "name_to_id": {},
+                "id_to_name": {},
+                "budget": 0,
+                "matched": False,
+                "role_id": role.id
+            }
+            response = "Successfully created a Secret Santa gift exchange for **" + ctx.guild.name + "**"
     else:
         response = "You are too weak to create a Secret Santa"
-    write_santa_data(ctx.guild.id, santa_data)
+    if santa_data:
+        write_santa_data(ctx.guild.id, santa_data)
     return response
 
 async def handle_command_start(ctx: commands.Context):
@@ -251,7 +258,7 @@ def handle_command_set_budget(ctx: commands.Context, args: list):
     write_santa_data(ctx.guild.id, santa_data)
     return response
 
-def handle_command_leave(ctx: commands.Context):
+async def handle_command_leave(ctx: commands.Context):
     santa_data = read_santa_data(ctx.guild.id)
     id_ = ctx.author.id
     if not santa_data:
@@ -263,6 +270,8 @@ def handle_command_leave(ctx: commands.Context):
             response = "Its too late! Matchups have already been drawn!"
         else:
             santa_data["participants"].remove(id_)
+            role = ctx.guild.get_role(santa_data["role_id"])
+            await ctx.author.remove_roles(role, reason = "Member left Secret Santa")
             response = "You have been successfully removed from this server's Secret Santa gift exchange!"
     write_santa_data(ctx.guild.id, santa_data)
     return response
@@ -270,7 +279,7 @@ def handle_command_leave(ctx: commands.Context):
 def handle_command_info(ctx: commands.Context):
     santa_data = read_santa_data(ctx.guild.id)
     if not santa_data:
-        response = santac.not_created_message
+        response = santac.not_created_message(ctx.guild)
     else:
         ids = santa_data["participants"]
         # random.shuffle(ids)
@@ -282,9 +291,20 @@ def handle_command_info(ctx: commands.Context):
         response += "\n\nThe current budget is: **$" + str(santa_data["budget"]) + "**"
     return response
 
-def handle_command_delete(ctx: commands.Context):
-    response = "Successfully deleted this server's Secret Santa"
-
+async def handle_command_delete(ctx: commands.Context):
+    id_ = ctx.author.id
+    file_name = get_file_name(ctx.guild.id)
+    if check_santa_data(ctx.guild.id):
+        if id_ == 140967651701817345:
+            santa_data = read_santa_data(ctx.guild.id)
+            role = ctx.guild.get_role(santa_data["role_id"])
+            await role.delete(reason = 'Deleting current Secret Santa')
+            os.remove(file_name)
+            response = "Successfully deleted this server's Secret Santa"
+        else:
+            response = "You are too weak to delete this Secret Santa"
+    else:
+        response = "There is no existing Secret Santa for this server"
     return response
 
 ### helpers
@@ -298,14 +318,24 @@ async def create_santa_role(guild: discord.Guild):
     return role
 
 def read_santa_data(guild_id: discord.Guild.id):
+    file_name = get_file_name(guild_id)
     try:
-        return utils.read_from_file(santac.SANTA_FILE_NAME + "_" + str(guild_id) + ".txt")
+        return utils.read_from_file(file_name)
     except:
-        os.remove(santac.SANTA_FILE_NAME + "_" + str(guild_id) + ".txt")
+        os.remove(file_name)
+        print("Error in file, deleting...")
         return
-def write_santa_data(guild_id, santa_data):
-    utils.write_to_file(santa_data, santac.SANTA_FILE_NAME + "_" + str(guild_id) + ".txt")
+def write_santa_data(guild_id: discord.Guild.id, santa_data: dict):
+    file_name = get_file_name(guild_id)
+    utils.write_to_file(santa_data, file_name)
 
+def check_santa_data(guild_id: discord.Guild.id):
+    file_name = get_file_name(guild_id)
+    return os.path.exists(file_name)
+
+def get_file_name(guild_id: discord.Guild.id):
+    file_name = santac.SANTA_FILE_NAME + "_" + str(guild_id) + ".txt"
+    return file_name
 async def create_matchups(ctx: commands.Context, santa_data: dict):
     player_list = santa_data["participants"]
     length = len(player_list)

@@ -1,1 +1,1 @@
-BOT_PREFIX = 'p!'
+BOT_PREFIX = 'j!'
