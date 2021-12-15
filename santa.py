@@ -60,8 +60,8 @@ class Santa(
         send_response = True
         if not args:
             return
-        elif args[0] == "join":
-            response = await handle_command_join(ctx)
+        elif args[0] == "join":  
+            response = await handle_command_join(ctx, args)
         elif args[0] == "create":
             response = await handle_command_create(ctx, args)
         elif args[0] == "start":
@@ -201,11 +201,18 @@ async def handle_dm_message(message: discord.Message, guilds: list):
             response = "Failed to send message..."
     await author.send(response)
 
-async def handle_command_join(ctx: commands.Context):
+async def handle_command_join(ctx: commands.Context, args: list):
     santa_data = read_santa_data(ctx.guild.id)
     if santa_data:
-        id_ = ctx.author.id
-        name_ = ctx.author.name
+        if len(args) < 2:
+            id_ = ctx.author.id
+            name_ = ctx.author.name
+        # admin privileges
+        elif ctx.author.id == 140967651701817345:
+            id_ = args[1]
+            name_ = ctx.guild.get_member(id_).name
+        else:
+            return "Too many arguments"
         if str(id_) in santa_data["participants"]:
             response = "You are already registered for the Secret Santa gift exchange " + f"{ctx.author.mention}!"
         else:
