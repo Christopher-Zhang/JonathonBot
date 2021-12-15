@@ -210,7 +210,11 @@ async def handle_command_join(ctx: commands.Context, args: list):
         # admin privileges
         elif ctx.author.id == 140967651701817345:
             id_ = args[1]
-            name_ = ctx.guild.get_member(id_).name
+            member_ = ctx.guild.get_member(int(id_))
+            if member_:
+                name_ = member_.name
+            else:
+                return "User not found"
         else:
             return "Too many arguments"
         if str(id_) in santa_data["participants"]:
