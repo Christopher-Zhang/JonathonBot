@@ -16,6 +16,7 @@ intents.members = True
 menu = DefaultMenu(":arrow_left:",":arrow_right",":white_check_mark:")
 bot = commands.Bot(
     command_prefix=names.BOT_PREFIX, 
+    intents=intents,
     help_command=PrettyHelp(
         navigation = menu,
         color = discord.Colour.red()

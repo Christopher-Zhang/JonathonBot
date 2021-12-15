@@ -1,11 +1,12 @@
 import discord
 import random
 import os
+import shutil
+from datetime import date
 
-from discord.ext.commands.core import check
 from util import utils
 from constants import santa_constants as santac
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 
 class Santa(
@@ -17,6 +18,15 @@ class Santa(
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._last_member = None
+
+    def cog_unload(self):
+        pass
+
+    @tasks.loop(seconds=30)
+    async def backup_data(self):
+        guilds = self.bot.guilds
+        for guild in guilds:
+            backup_santa_data(guild)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -53,18 +63,22 @@ class Santa(
         elif args[0] == "join":
             response = await handle_command_join(ctx)
         elif args[0] == "create":
-            response = await handle_command_create(ctx)
+            response = await handle_command_create(ctx, args)
         elif args[0] == "start":
             response = await handle_command_start(ctx)
             send_response = False
         elif args[0] == "set_budget":
-            response = handle_command_set_budget(ctx, args[1:])
+            response = handle_command_set_budget(ctx, args)
         elif args[0] == "leave":
             response = await handle_command_leave(ctx)
         elif args[0] == "info":
             response = handle_command_info(ctx)
         elif args[0] == 'delete':
             response = await handle_command_delete(ctx)
+        elif args[0] == 'add_link':
+            response = handle_command_add_link(ctx, args)
+        elif args[0] == 'test':
+            response = await handle_command_test(ctx, args)
         else:
             send_response = False
         if send_response:
@@ -75,8 +89,10 @@ async def handle_dm_info(message: discord.Message, guilds: list):
     author = message.author
     exists = False
     for guild in guilds:
-        print(guild.name)
-        if await guild.fetch_member(author.id):
+        # print(guild.name)
+        # if await guild.fetch_member(author.id):
+        print(guild.get_member(author.id))
+        if guild.get_member(author.id):
             file_name = get_file_name(guild.id)
             if os.path.exists(file_name):
                 exists = True
@@ -111,8 +127,9 @@ async def handle_dm_request(message: discord.Message, guilds: list):
     if valid:
         exists = False
         for guild in guilds:
-            if await guild.fetch_member(author.id):
-                file_name = get_file_name(guild.id)
+            # if await guild.fetch_member(author.id):
+            if guild.get_member(author.id):
+                # file_name = get_file_name(guild.id)
                 if check_santa_data(guild.id):
                     exists = True
                     santa_data = read_santa_data(guild.id)
@@ -123,9 +140,14 @@ async def handle_dm_request(message: discord.Message, guilds: list):
                     embed.set_thumbnail(url=santac.SANTA_ICON_URL)
                     success = False
                     try:
-                        santee = await guild.fetch_member(santa_data["matchups"][str(author.id)])
-                        await santee.send(embed=embed)
-                        success = True
+                        # santee = await guild.fetch_member(santa_data["matchups"][str(author.id)])
+                        santee_id = int(santa_data["matchups"][str(author.id)])
+                        santee = guild.get_member(santee_id)
+                        if(santee):
+                            await santee.send(embed=embed)
+                            success = True
+                        else:
+                            print("failed to find member REQUEST")
                     except:
                         pass
                     response = "Request sent successfully!" if success else "Failed to send message..."
@@ -152,16 +174,22 @@ async def handle_dm_message(message: discord.Message, guilds: list):
     exists = False
     success = False
     for guild in guilds:
-        print(guild.name)
-        if await guild.fetch_member(author.id):
+        # print(guild.name)
+        # if await guild.fetch_member(author.id):
+        if guild.get_member(author.id):
             # file_name = get_file_name(guild.id)
             if check_santa_data(guild.id):
                 santa_data = read_santa_data(guild.id)
                 exists = True
                 try:
-                    recipient = await guild.fetch_member(santa_data["matchups"][str(author.id)])
-                    await recipient.send(embed=embed)
-                    success = True
+                    recipient_id = int(santa_data["matchups_r"][str(author.id)])
+                    print("Recipient id: ", recipient_id)
+                    recipient = guild.get_member(recipient_id)
+                    if recipient:
+                        await recipient.send(embed=embed)
+                        success = True
+                    else:
+                        print("failed to find member MESSAGE")
                 except discord.errors.Forbidden:
                     pass
     if not exists:
@@ -178,25 +206,25 @@ async def handle_command_join(ctx: commands.Context):
     if santa_data:
         id_ = ctx.author.id
         name_ = ctx.author.name
-        if id_ in santa_data["participants"]:
-            response = "You are already registered for the Secret Santa gift exchange" + f"{ctx.author.mention}!"
+        if str(id_) in santa_data["participants"]:
+            response = "You are already registered for the Secret Santa gift exchange " + f"{ctx.author.mention}!"
         else:
-            santa_data["participants"].append(id_)
-            santa_data["name_to_id"][name_] = id_
-            santa_data["id_to_name"][id_] = name_
-            role = ctx.guild.get_role(santa_data["role_id"])
+            santa_data["participants"].append(str(id_))
+            santa_data["name_to_id"][name_] = str(id_)
+            santa_data["id_to_name"][str(id_)] = name_
+            role = ctx.guild.get_role(int(santa_data["role_id"]))
             if(role == None):
                 print("Santa role not found")
                 #TODO make better logs
             else:
                 await ctx.author.add_roles(role, reason = "Joined Secret Santa")
-            response = "Welcome to the **" + ctx.guild.name + "** Secret Santa gift exchange" + f"{ctx.author.mention}!"
+            response = "Welcome to the **" + ctx.guild.name + "** Secret Santa gift exchange " + f"{ctx.author.mention}!"
     else:
         response = santac.not_created_message(ctx.guild)
     write_santa_data(ctx.guild.id, santa_data)
     return response
 
-async def handle_command_create(ctx: commands.Context):
+async def handle_command_create(ctx: commands.Context, args: list):
     # permissions_ = user_.guild_permissions
     # if permissions_.administrator:
     id_ = ctx.author.id
@@ -210,13 +238,14 @@ async def handle_command_create(ctx: commands.Context):
                 "participants": [],
                 "matchups": {},
                 "matchups_r": {},
-                "server_id": ctx.guild.id,
+                "server_id": str(ctx.guild.id),
                 "server_name": ctx.guild.name,
                 "name_to_id": {},
                 "id_to_name": {},
                 "budget": 0,
                 "matched": False,
-                "role_id": role.id
+                "role_id": str(role.id),
+                "wishlist_link": None if len(args) < 2 else args[1]
             }
             response = "Successfully created a Secret Santa gift exchange for **" + ctx.guild.name + "**"
     else:
@@ -244,13 +273,13 @@ def handle_command_set_budget(ctx: commands.Context, args: list):
     id_ = ctx.author.id
     if not santa_data:
         response = santac.not_created_message(ctx.guild)
-    elif len(args) < 1:
+    elif len(args) < 2:
         response = "Please give a value"
     else:
         # permissions_ = user_.guild_permissions
         # if permissions_.administrator:
         if id_ == 140967651701817345:
-            val = int(args[0])
+            val = int(args[1])
             santa_data["budget"] = val
             response = "Successfully set the budget to **$" + str(val) + "**"
         else:
@@ -264,12 +293,12 @@ async def handle_command_leave(ctx: commands.Context):
     if not santa_data:
         response = santac.not_created_message
     else:
-        if id_ not in santa_data["participants"]:
+        if str(id_) not in santa_data["participants"]:
             response = santac.santa_no_exchange_response
         elif santa_data["matched"]:
             response = "Its too late! Matchups have already been drawn!"
         else:
-            santa_data["participants"].remove(id_)
+            santa_data["participants"].remove(str(id_))
             role = ctx.guild.get_role(santa_data["role_id"])
             await ctx.author.remove_roles(role, reason = "Member left Secret Santa")
             response = "You have been successfully removed from this server's Secret Santa gift exchange!"
@@ -306,6 +335,29 @@ async def handle_command_delete(ctx: commands.Context):
             response = "You are too weak to delete this Secret Santa"
     else:
         response = "There is no existing Secret Santa for this server"
+    return response
+
+def handle_command_add_link(ctx: commands.Context, args: list):
+    guild_id = ctx.guild.id
+    response = ""
+    if check_santa_data(guild_id):
+        if len(args) < 2:
+            response = "Missing args"
+        else:
+            santa_data = read_santa_data(guild_id)
+            santa_data["wishlist_link"] = args[1]
+            response = "Successfully added wishlist link: " + args[1]
+    else:
+        response = santac.not_created_message(ctx.guild)
+    return response
+
+async def handle_command_test(ctx: commands.Context, args: list):
+    author_id = ctx.author.id
+    member = await ctx.guild.fetch_member(author_id)
+    member_id = member.id
+    response = "Author id: " + str(author_id) + "\n Member id: " + str(member_id)
+    print(author_id)
+    print(member_id)
     return response
 
 ### helpers
@@ -354,10 +406,11 @@ async def create_matchups(ctx: commands.Context, santa_data: dict):
     matchups_r = {}
     members = []
     for i in range(length):
-        id = random_list1[i]
-        matchups[str(id)] = random_list2[i]
-        matchups_r[str(random_list2[i])] = id
-        member = await ctx.guild.fetch_member(id) 
+        santa_id = random_list1[i]
+        santee_id = random_list2[i]
+        matchups[str(santa_id)] = santee_id
+        matchups_r[str(santee_id)] = santa_id
+        member = await ctx.guild.fetch_member(str(santa_id)) 
         members.append(member)
     santa_data["matchups"] = matchups
     santa_data["matchups_r"] = matchups_r
@@ -383,3 +436,9 @@ async def create_matchups(ctx: commands.Context, santa_data: dict):
 async def alert_players(message: discord.Message, members: list):
     for member in members:
         await member.send(message)
+
+def backup_santa_data(guild: discord.Guild):
+    if check_santa_data(guild.id):
+        original_file_name = get_file_name(guild.id)
+        new_file_name = str(date.today().strftime("%y%m%d")) + '_' + original_file_name
+        shutil.copyfile(original_file_name, "./backups/" + new_file_name)

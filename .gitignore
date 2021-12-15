@@ -1,7 +1,8 @@
 # Other
 .DS_Store
 *.txt
-
+test.py
+./backups
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
