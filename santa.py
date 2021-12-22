@@ -11,8 +11,7 @@ from discord.ext import commands, tasks
 
 class Santa(
     commands.Cog,
-    name = "Santa",
-    description = "For Secret Santa Gift Exchange"#,
+    name = "Santa"
     # help = "For Secret Santa gift exchange, commands include:\n\njoin, info, leave"
 ):
     def __init__(self, bot: commands.Bot):
@@ -38,8 +37,8 @@ class Santa(
                 content = message.content
                 if message.content.startswith('info'):
                     await handle_dm_info(message, self.bot.guilds)
-                elif content.startswith('request'):
-                    await handle_dm_request(message, self.bot.guilds)
+                # elif content.startswith('request'):
+                #     await handle_dm_request(message, self.bot.guilds)
                 elif content.startswith('message'):
                     await handle_dm_message(message, self.bot.guilds)
                 elif content.startswith('help'):
@@ -110,95 +109,112 @@ async def handle_dm_info(message: discord.Message, guilds: list):
     if not exists:
         await author.send(santac.santa_no_exchange_response)
 
-async def handle_dm_request(message: discord.Message, guilds: list):
-    content = message.content
-    author = message.author
-    args = content[8:]
-    valid = True
-    message = ''
-    if args.lower() == "address":
-        message = "Your Secret Santa is requesting your shipping address.\n\nRespond using this command: message [your shipping address]"
-    elif args.lower() == "wishlist":
-        message = "Your Secret Santa needs help choosing a gift smh...\n\nHelp them out with this command: message [some gift idea help]"
-    elif args.lower() == "christmas":
-        message = "Your Secret Santa wishes you a Merry Christmas!\n\nReturn the favor with this command: message [some (hopefully) cheery words]"
-    else:
-        valid = False
-    if valid:
-        exists = False
-        for guild in guilds:
-            # if await guild.fetch_member(author.id):
-            if guild.get_member(author.id):
-                # file_name = get_file_name(guild.id)
-                if check_santa_data(guild.id):
-                    exists = True
-                    santa_data = read_santa_data(guild.id)
-                    embed = discord.Embed(
-                        title = "A Message From Your Secret Santa!",
-                        description = message,
-                    )
-                    embed.set_thumbnail(url=santac.SANTA_ICON_URL)
-                    success = False
-                    try:
-                        # santee = await guild.fetch_member(santa_data["matchups"][str(author.id)])
-                        santee_id = int(santa_data["matchups"][str(author.id)])
-                        santee = guild.get_member(santee_id)
-                        if(santee):
-                            await santee.send(embed=embed)
-                            success = True
-                        else:
-                            print("failed to find member REQUEST")
-                    except:
-                        pass
-                    response = "Request sent successfully!" if success else "Failed to send message..."
-        if not exists:
-            response = santac.santa_no_exchange_response
-    else:
-        response = ("To protect the sanctity of this blessed holiday ritual, you may choose from these options three:\n" + 
-            "address - if you need their shipping address\nwishlist - if you need some help choosing\n" +
-            "christmas - if you just want to wish your Secret Santee™ a Merry Christmas\n\n" +
-            "Example: request address")
-    await author.send(response)
+# async def handle_dm_request(message: discord.Message, guilds: list):
+#     content = message.content
+#     author = message.author
+#     args = content[8:]
+#     valid = True
+#     message = ''
+#     if args.lower() == "address":
+#         message = "Your Secret Santa is requesting your shipping address.\n\nRespond using this command: message [your shipping address]"
+#     elif args.lower() == "wishlist":
+#         message = "Your Secret Santa needs help choosing a gift smh...\n\nHelp them out with this command: message [some gift idea help]"
+#     elif args.lower() == "christmas":
+#         message = "Your Secret Santa wishes you a Merry Christmas!\n\nReturn the favor with this command: message [some (hopefully) cheery words]"
+#     else:
+#         valid = False
+#     if valid:
+#         exists = False
+#         for guild in guilds:
+#             # if await guild.fetch_member(author.id):
+#             if guild.get_member(author.id):
+#                 # file_name = get_file_name(guild.id)
+#                 if check_santa_data(guild.id):
+#                     exists = True
+#                     santa_data = read_santa_data(guild.id)
+#                     embed = discord.Embed(
+#                         title = "A Message From Your Secret Santa!",
+#                         description = message,
+#                     )
+#                     embed.set_thumbnail(url=santac.SANTA_ICON_URL)
+#                     success = False
+#                     try:
+#                         # santee = await guild.fetch_member(santa_data["matchups"][str(author.id)])
+#                         santee_id = int(santa_data["matchups"][str(author.id)])
+#                         santee = guild.get_member(santee_id)
+#                         if(santee):
+#                             await santee.send(embed=embed)
+#                             success = True
+#                         else:
+#                             print("failed to find member REQUEST")
+#                     except:
+#                         pass
+#                     response = "Request sent successfully!" if success else "Failed to send message..."
+#         if not exists:
+#             response = santac.santa_no_exchange_response
+#     else:
+#         response = ("To protect the sanctity of this blessed holiday ritual, you may choose from these options three:\n" + 
+#             "address - if you need their shipping address\nwishlist - if you need some help choosing\n" +
+#             "christmas - if you just want to wish your Secret Santee™ a Merry Christmas\n\n" +
+#             "Example: request address")
+#     await author.send(response)
 
 async def handle_dm_message(message: discord.Message, guilds: list):
     content = message.content
     author = message.author
-    original_message = content[8:]
-    embed = discord.Embed(
-        title = "Your Secret Santee™ **" + author.name + "** is sending you the following message!  ",
-        description = original_message
-    )
-    embed.set_thumbnail(url=santac.SANTA_ICON_URL)
-    # TODO let user pick which secret santa to send to
-    # response = "Pick out of the following servers:"
-    exists = False
-    success = False
-    for guild in guilds:
-        # print(guild.name)
-        # if await guild.fetch_member(author.id):
-        if guild.get_member(author.id):
-            # file_name = get_file_name(guild.id)
-            if check_santa_data(guild.id):
-                santa_data = read_santa_data(guild.id)
-                exists = True
-                try:
-                    recipient_id = int(santa_data["matchups_r"][str(author.id)])
-                    print("Recipient id: ", recipient_id)
-                    recipient = guild.get_member(recipient_id)
-                    if recipient:
-                        await recipient.send(embed=embed)
-                        success = True
-                    else:
-                        print("failed to find member MESSAGE")
-                except discord.errors.Forbidden:
-                    pass
-    if not exists:
-        response = santac.santa_no_exchange_response
-    else:
-        if success:
-            response = "Message successfully sent!"
+    content = content[8:]
+    s = ['ERROR', 'Santa', 'Santee™']
+    mode = 0
+    if content.startswith('santee'):
+        mode = 1
+        content = content[7:]
+    elif content.startswith('santa'):
+        mode = 2
+        content = content[6:]
+    if mode != 0:
+        embed = discord.Embed(
+            title = "Your Secret " + s[mode] +  (" **" + author.name + "**"if mode == 2 else " ") + " is sending you the following message!  ",
+            description = content
+        )
+        embed.set_thumbnail(url=santac.SANTA_ICON_URL)
+        # TODO let user pick which secret santa to send to
+        # response = "Pick out of the following servers:"
+        exists = False
+        success = False
+        for guild in guilds:
+            # print(guild.name)
+            # if await guild.fetch_member(author.id):
+            if guild.get_member(author.id):
+                # file_name = get_file_name(guild.id)
+                if check_santa_data(guild.id):
+                    santa_data = read_santa_data(guild.id)
+                    exists = True
+                    try:
+                        santa_id = int(santa_data["matchups_r"][str(author.id)])
+                        santee_id = int(santa_data["matchups"][str(author.id)])
+                        # print("Recipient id: ", recipient_id)
+                        if mode == 1:
+                            recipient = guild.get_member(santee_id)
+                        elif mode == 2:
+                            recipient = guild.get_member(santa_id)
+                        else:
+                            recipient = None
+                        if recipient:
+                            await recipient.send(embed=embed)
+                            success = True
+                        else:
+                            print("failed to find member MESSAGE")
+                    except discord.errors.Forbidden:
+                        pass
+        if not exists:
+            response = santac.santa_no_exchange_response
         else:
-            response = "Failed to send message..."
+            if success:
+                response = "Message successfully sent!"
+            else:
+                response = "Failed to send message..."
+    else:
+        response = 'Please specify the recipient.\nExample: "message santa Happy Birthday!"'
     await author.send(response)
 
 async def handle_command_join(ctx: commands.Context, args: list):

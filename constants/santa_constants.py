@@ -23,9 +23,10 @@ HELP_ICON_URL = "https://clipart.world/wp-content/uploads/2020/06/Question-Mark-
 santa_help_alert = discord.Embed(
     title = "Here are some commands to help you get started!",
     description = ("You can just DM me the following commands, no prefix needed!\n\n\n" +
-        "**info**\n- Use this command to see the relevant info about your Secret Santa gift exchanges!\n\n"
-        "**message [insert cheery words here]**\n- Give your Secret Santa a message, respond to their questions!\n\n" +
-        '**request [address, wishlist, christmas]**\n- Use this command to anonymously request information from your Secret Santee™, type "request" to see more details')
+        "**info**\n- Use this command to see the relevant info about your Secret Santa gift exchanges!\n\n" +
+        '**message** [santa, santee]\n- Use this command to message your Santa, or your Santee anonymously!\nUsage: "message santee [EXAMPLE MESSAGE]"')
+        # "**message [insert cheery words here]**\n- Give your Secret Santa a message, respond to their questions!\n\n" +
+        # '**request [address, wishlist, christmas]**\n- Use this command to anonymously request information from your Secret Santee™, type "request" to see more details')
 )
 santa_help_alert.set_thumbnail(url=HELP_ICON_URL)
 

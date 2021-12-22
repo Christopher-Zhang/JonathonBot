@@ -6,8 +6,7 @@ from discord.ext import commands
 
 class Config(
     commands.Cog,
-    name = "Config",
-    description = "Admin-type commands"
+    name = "Config"
 ):
     def __init__(self, bot: commands.Bot):
         self.bot = bot

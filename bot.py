@@ -3,7 +3,7 @@ from pretty_help import PrettyHelp, DefaultMenu
 import os
 import santa
 import config
-import money
+# import money
 # from constants import santa_constants as santac
 from pymongo import MongoClient
 from constants import names
@@ -25,7 +25,7 @@ bot = commands.Bot(
         # show_index = False
     )
 )
-mongo_url = os.get_env('MONGODB_URL')
+mongo_url = os.getenv('MONGODB_URL')
 mongo_client = MongoClient(mongo_url)
 bot.add_cog(santa.Santa(bot))
 bot.add_cog(config.Config(bot))
