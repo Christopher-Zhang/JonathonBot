@@ -3,7 +3,9 @@ from pretty_help import PrettyHelp, DefaultMenu
 import os
 import santa
 import config
+import money
 # from constants import santa_constants as santac
+from pymongo import MongoClient
 from constants import names
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -23,8 +25,11 @@ bot = commands.Bot(
         # show_index = False
     )
 )
+mongo_url = os.get_env('MONGODB_URL')
+mongo_client = MongoClient(mongo_url)
 bot.add_cog(santa.Santa(bot))
 bot.add_cog(config.Config(bot))
+# bot.add_cog(money.Money(bot, mongo_client))
 
 @bot.event
 async def on_ready():

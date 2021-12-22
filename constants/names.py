@@ -1,1 +1,1 @@
-BOT_PREFIX = 'j!'
+BOT_PREFIX = ['j!', 'J!']

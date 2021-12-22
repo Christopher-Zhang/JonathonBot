@@ -1,5 +1,7 @@
 import discord
 import santa
+import logging
+
 from discord.ext import commands
 
 class Config(
@@ -7,12 +9,12 @@ class Config(
     name = "Config",
     description = "Admin-type commands"
 ):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._last_member = None
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         if message.author == self.bot.user:
             return
         if not message.guild:
@@ -26,7 +28,7 @@ class Config(
         description = "For debugging purposes",
         help = "These commands are for debugging.\nYou probably don't need to worry about them."
     )
-    async def debug(self, ctx, *args):
+    async def debug(self, ctx: commands.Context, *args):
         if args[0] == 'santa':
             if len(args) < 2:
                 print("Missing arguments")
@@ -35,4 +37,13 @@ class Config(
                 print('Created santa role for ' + ctx.guild.name)
                 print('Name of role:', role.name)
                 print('Role id: ', role.id)
+        return
+    
+    @commands.command(
+        description = "Ping ... ... ... Pong!",
+        help = "Ping ... ... ... Pong!",
+        aliases = ['Ping', 'pING']
+    )
+    async def ping(self, ctx: commands.Context):
+        await ctx.channel.send("Pong!")
         return
